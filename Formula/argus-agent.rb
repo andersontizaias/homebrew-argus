@@ -1,4 +1,4 @@
-class Argus < Formula
+class ArgusAgent < Formula
   desc "Agente de QA autônomo (web, Android, iOS) com LangGraph, Playwright e Appium"
   homepage "https://github.com/andersontizaias/argus-agent"
   # GitHubPrivateRepositoryReleaseDownloadStrategy foi removida do Homebrew —
@@ -23,7 +23,7 @@ class Argus < Formula
 
   # node@22 e Appium (npm install -g appium + drivers uiautomator2/xcuitest)
   # só são necessários pra testes Android/iOS — não são dependência da
-  # fórmula pra manter `brew install argus` leve pra quem só usa web. Veja
+  # fórmula pra manter `brew install argus-agent` leve pra quem só usa web. Veja
   # os caveats e `scripts/bootstrap.sh` no pacote instalado.
 
   # `uv sync`/Playwright NÃO rodam em `install`/`post_install`: essas fases
