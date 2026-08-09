@@ -1,8 +1,20 @@
 class Argus < Formula
   desc "Agente de QA autônomo (web, Android, iOS) com LangGraph, Playwright e Appium"
   homepage "https://github.com/andersontizaias/argus-agent"
-  url "https://github.com/andersontizaias/argus-agent/releases/download/v0.1.1/argus-agent-v0.1.1.tar.gz",
-      using: GitHubPrivateRepositoryReleaseDownloadStrategy
+  # GitHubPrivateRepositoryReleaseDownloadStrategy foi removida do Homebrew —
+  # o substituto suportado é baixar direto do endpoint de asset da API (que
+  # aceita Authorization: token e responde com Content-Disposition, então o
+  # CurlDownloadStrategy padrão já reconhece o .tar.gz certinho). O token é
+  # lido via ENV.clear_sensitive_environment_for_eval! pra não vazar o
+  # segredo pro cache/log de specs do Homebrew — só é expandido na hora do
+  # download de verdade.
+  url "https://api.github.com/repos/andersontizaias/argus-agent/releases/assets/506716103",
+      headers: [
+        "Accept: application/octet-stream",
+        ENV.clear_sensitive_environment_for_eval! do
+          "Authorization: token #{ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", nil)}"
+        end,
+      ]
   version "0.1.1"
   sha256 "4db1def40138ea3d5e3d43a70aee52a249af6b565c5c2d6cb83140b3ffa123d9"
   license "UNLICENSED"
