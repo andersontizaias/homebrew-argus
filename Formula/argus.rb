@@ -39,41 +39,47 @@ class Argus < Formula
   # (uv sync) cai em ~/.argus/venv, ao lado do banco e dos artefatos, nunca
   # dentro do Cellar.
   def install
-    libexec.install Dir["*"]
+    # Lista explícita (em vez de Dir["*"]) — só o que o app precisa em
+    # runtime (uv sync/build do frontend/migrações), sem depender de como o
+    # Homebrew decide limpar arquivos soltos na raiz do keg depois do
+    # install (observado apagando um README.md copiado via glob).
+    libexec.install "src", "migrations", "scripts", "frontend", "alembic.ini", "pyproject.toml", "uv.lock",
+                     ".env.example"
 
     (libexec/".brew-run.sh").write <<~SH
-            #!/usr/bin/env bash
-            # Gerado pela fórmula Homebrew — não editar. Faz o setup do venv (só na
-            # primeira execução desta versão) e então executa o comando pedido.
-            set -euo pipefail
-            LIBEXEC="#{libexec}"
-            UV="#{formula_opt_bin("uv")}/uv"
-            export UV_PROJECT_ENVIRONMENT="${HOME}/.argus/venv"
-            MARKER="${UV_PROJECT_ENVIRONMENT}/.synced-#{version}"
+      #!/usr/bin/env bash
+      # Gerado pela fórmula Homebrew — não editar. Faz o setup do venv (só na
+      # primeira execução desta versão) e então executa o comando pedido.
+      set -euo pipefail
+      LIBEXEC="#{libexec}"
+      UV="#{formula_opt_bin("uv")}/uv"
+      export UV_PROJECT_ENVIRONMENT="${HOME}/.argus/venv"
+      MARKER="${UV_PROJECT_ENVIRONMENT}/.synced-#{version}"
 
-            if [[ ! -f "${MARKER}" ]]; then
-              echo "== Argus Agent: preparando dependências (só na primeira vez desta versão) ==" >&2
-              "${UV}" sync --project "${LIBEXEC}" --frozen
-              "${UV}" run --project "${LIBEXEC}" playwright install chromium
+      if [[ ! -f "${MARKER}" ]]; then
+        echo "== Argus Agent: preparando dependências (só na primeira vez desta versão) ==" >&2
+        "${UV}" sync --project "${LIBEXEC}" --frozen
+        "${UV}" run --project "${LIBEXEC}" playwright install chromium
 
-              if [[ ! -f "${LIBEXEC}/.env" ]]; then
-                cp "${LIBEXEC}/.env.example" "${LIBEXEC}/.env"
-                SECRET="$("${UV}" run --project "${LIBEXEC}" python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
-                python3 - "${LIBEXEC}/.env" "${SECRET}" <<'PY'
-      import re, sys
-      path, secret = sys.argv[1], sys.argv[2]
+        if [[ ! -f "${LIBEXEC}/.env" ]]; then
+          cp "${LIBEXEC}/.env.example" "${LIBEXEC}/.env"
+          SECRET="$("${UV}" run --project "${LIBEXEC}" python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
+          python3 -c "
+      import re
+      path = '${LIBEXEC}/.env'
+      key = '''${SECRET}'''
       text = open(path).read()
-      text = re.sub(r"^ARGUS_SECRET_KEY=.*$", f"ARGUS_SECRET_KEY={secret}", text, flags=re.M)
-      open(path, "w").write(text)
-      PY
-              fi
+      text = re.sub(r'^ARGUS_SECRET_KEY=.*$', f'ARGUS_SECRET_KEY={key}', text, flags=re.M)
+      open(path, 'w').write(text)
+      "
+        fi
 
-              "${UV}" run --project "${LIBEXEC}" alembic upgrade head
-              mkdir -p "${UV_PROJECT_ENVIRONMENT}"
-              touch "${MARKER}"
-            fi
+        "${UV}" run --project "${LIBEXEC}" alembic upgrade head
+        mkdir -p "${UV_PROJECT_ENVIRONMENT}"
+        touch "${MARKER}"
+      fi
 
-            exec "${UV}" run --project "${LIBEXEC}" "$@"
+      exec "${UV}" run --project "${LIBEXEC}" "$@"
     SH
     (libexec/".brew-run.sh").chmod 0755
 
