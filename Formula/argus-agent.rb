@@ -1,23 +1,12 @@
 class ArgusAgent < Formula
   desc "Autonomous QA agent (web, Android, iOS) built with LangGraph"
   homepage "https://github.com/andersontizaias/argus-agent"
-  # GitHubPrivateRepositoryReleaseDownloadStrategy foi removida do Homebrew —
-  # o substituto suportado é baixar direto do endpoint de asset da API (que
-  # aceita Authorization: token e responde com Content-Disposition, então o
-  # CurlDownloadStrategy padrão já reconhece o .tar.gz certinho). O token é
-  # lido via ENV.clear_sensitive_environment_for_eval! pra não vazar o
-  # segredo pro cache/log de specs do Homebrew — só é expandido na hora do
-  # download de verdade.
-  url "https://api.github.com/repos/andersontizaias/argus-agent/releases/assets/507484872",
-      headers: [
-        "Accept: application/octet-stream",
-        ENV.clear_sensitive_environment_for_eval! do
-          "Authorization: token #{ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", nil)}"
-        end,
-      ]
-  version "0.1.2"
-  sha256 "5c91d2f798f2c3c9769525c2ab4d528a9c5d8530e20b2fdfd4b50d1772ebad18"
-  license "UNLICENSED"
+  # Repositório público — URL direta de release, sem headers/token. Pra
+  # bumpar versão: só troca a tag no url/version e recalcula o sha256.
+  url "https://github.com/andersontizaias/argus-agent/releases/download/v0.1.3/argus-agent-v0.1.3.tar.gz"
+  version "0.1.3"
+  sha256 "f035b6eca7c2aa9f09f9aba18fcfd8173dafcf0f58ec0f75d4cd16c943d584d8"
+  license "MIT"
 
   depends_on "uv"
 
@@ -93,9 +82,6 @@ class ArgusAgent < Formula
 
   def caveats
     <<~EOS
-      Private repository — this tap and its release assets require
-      HOMEBREW_GITHUB_API_TOKEN with read access to the repo.
-
       The first call to `argus`/`argus-worker`/`argus-doctor` does the setup
       (uv sync + Playwright Chromium — takes a few minutes and downloads
       ~200 MB); later calls are instant.
