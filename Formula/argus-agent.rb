@@ -74,7 +74,7 @@ class ArgusAgent < Formula
       "
         fi
 
-        "${UV}" run --project "${LIBEXEC}" alembic upgrade head
+        "${UV}" run --project "${LIBEXEC}" alembic -c "${LIBEXEC}/alembic.ini" upgrade head
         mkdir -p "${UV_PROJECT_ENVIRONMENT}"
         touch "${MARKER}"
       fi
