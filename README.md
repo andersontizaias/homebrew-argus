@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="img/logo.png" alt="Argus Agent" width="180">
+</p>
+
 # homebrew-argus
 
 Tap Homebrew do [Argus Agent](https://github.com/andersontizaias/argus-agent).
