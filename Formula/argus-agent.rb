@@ -8,15 +8,15 @@ class ArgusAgent < Formula
   # lido via ENV.clear_sensitive_environment_for_eval! pra não vazar o
   # segredo pro cache/log de specs do Homebrew — só é expandido na hora do
   # download de verdade.
-  url "https://api.github.com/repos/andersontizaias/argus-agent/releases/assets/506716103",
+  url "https://api.github.com/repos/andersontizaias/argus-agent/releases/assets/507484872",
       headers: [
         "Accept: application/octet-stream",
         ENV.clear_sensitive_environment_for_eval! do
           "Authorization: token #{ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", nil)}"
         end,
       ]
-  version "0.1.1"
-  sha256 "4db1def40138ea3d5e3d43a70aee52a249af6b565c5c2d6cb83140b3ffa123d9"
+  version "0.1.2"
+  sha256 "5c91d2f798f2c3c9769525c2ab4d528a9c5d8530e20b2fdfd4b50d1772ebad18"
   license "UNLICENSED"
 
   depends_on "uv"
