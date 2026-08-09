@@ -26,50 +26,73 @@ class Argus < Formula
   # fórmula pra manter `brew install argus` leve pra quem só usa web. Veja
   # os caveats e `scripts/bootstrap.sh` no pacote instalado.
 
-  # O venv do projeto (uv sync) fica FORA do Cellar, em ~/.argus/venv, de
-  # propósito: pacotes Python compilados (wheels com .so) instalados ali
-  # dentro quebram o passo de "fix install linkage" que o Homebrew roda
-  # depois do `install` em todo keg — o binário não tem padding de header
-  # suficiente pra ser relinkado pro caminho longo do Cellar. Como nada fora
-  # do Cellar entra nesse passo, isolar o venv em ~/.argus/ (mesmo lugar do
-  # banco/artefatos) evita o problema de raiz em vez de tratar o sintoma.
-  def venv_dir
-    "#{Dir.home}/.argus/venv"
-  end
-
+  # `uv sync`/Playwright NÃO rodam em `install`/`post_install`: essas fases
+  # do Homebrew sandboxam $HOME pra um diretório temporário (correto, evita
+  # que a build mexa na máquina de verdade) — qualquer coisa escrita em
+  # "~/.argus" ali vira lixo descartado no fim do build, e além disso
+  # pacotes Python compilados (.so) instalados DENTRO do Cellar quebram o
+  # passo de "fix install linkage" que o Homebrew roda depois do `install`
+  # (o binário não tem padding de header pra ser relinkado pro caminho
+  # longo do Cellar). A solução pras duas coisas é a mesma: adiar todo esse
+  # setup pra primeira execução real de `argus`/`argus-worker`/
+  # `argus-doctor`, feita pelo usuário com o $HOME de verdade — daí o venv
+  # (uv sync) cai em ~/.argus/venv, ao lado do banco e dos artefatos, nunca
+  # dentro do Cellar.
   def install
     libexec.install Dir["*"]
+
+    (libexec/".brew-run.sh").write <<~SH
+            #!/usr/bin/env bash
+            # Gerado pela fórmula Homebrew — não editar. Faz o setup do venv (só na
+            # primeira execução desta versão) e então executa o comando pedido.
+            set -euo pipefail
+            LIBEXEC="#{libexec}"
+            UV="#{formula_opt_bin("uv")}/uv"
+            export UV_PROJECT_ENVIRONMENT="${HOME}/.argus/venv"
+            MARKER="${UV_PROJECT_ENVIRONMENT}/.synced-#{version}"
+
+            if [[ ! -f "${MARKER}" ]]; then
+              echo "== Argus Agent: preparando dependências (só na primeira vez desta versão) ==" >&2
+              "${UV}" sync --project "${LIBEXEC}" --frozen
+              "${UV}" run --project "${LIBEXEC}" playwright install chromium
+
+              if [[ ! -f "${LIBEXEC}/.env" ]]; then
+                cp "${LIBEXEC}/.env.example" "${LIBEXEC}/.env"
+                SECRET="$("${UV}" run --project "${LIBEXEC}" python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
+                python3 - "${LIBEXEC}/.env" "${SECRET}" <<'PY'
+      import re, sys
+      path, secret = sys.argv[1], sys.argv[2]
+      text = open(path).read()
+      text = re.sub(r"^ARGUS_SECRET_KEY=.*$", f"ARGUS_SECRET_KEY={secret}", text, flags=re.M)
+      open(path, "w").write(text)
+      PY
+              fi
+
+              "${UV}" run --project "${LIBEXEC}" alembic upgrade head
+              mkdir -p "${UV_PROJECT_ENVIRONMENT}"
+              touch "${MARKER}"
+            fi
+
+            exec "${UV}" run --project "${LIBEXEC}" "$@"
+    SH
+    (libexec/".brew-run.sh").chmod 0755
 
     %w[argus argus-worker argus-doctor].each do |cmd|
       (bin/cmd).write <<~SH
         #!/usr/bin/env bash
-        export UV_PROJECT_ENVIRONMENT="#{venv_dir}"
-        exec "#{formula_opt_bin("uv")}/uv" run --project "#{libexec}" #{cmd} "$@"
+        exec "#{libexec}/.brew-run.sh" #{cmd} "$@"
       SH
     end
-  end
-
-  def post_install
-    ENV["UV_PROJECT_ENVIRONMENT"] = venv_dir
-    system formula_opt_bin("uv")/"uv", "sync", "--project", libexec, "--frozen"
-    system formula_opt_bin("uv")/"uv", "run", "--project", libexec, "playwright", "install", "chromium"
-
-    env_file = libexec/".env"
-    unless env_file.exist?
-      cp libexec/".env.example", env_file
-      secret = Utils.safe_popen_read(
-        formula_opt_bin("uv")/"uv", "run", "--project", libexec, "python3", "-c",
-        "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-      ).strip
-      inreplace env_file, /^ARGUS_SECRET_KEY=.*$/, "ARGUS_SECRET_KEY=#{secret}"
-    end
-    system formula_opt_bin("uv")/"uv", "run", "--project", libexec, "alembic", "upgrade", "head"
   end
 
   def caveats
     <<~EOS
       Repositório privado — este tap e os assets de release exigem
       HOMEBREW_GITHUB_API_TOKEN com acesso de leitura ao repo.
+
+      A primeira chamada de `argus`/`argus-worker`/`argus-doctor` faz o setup
+      (uv sync + Playwright Chromium — leva alguns minutos e baixa ~200 MB);
+      as próximas são instantâneas.
 
       Rodar:
         argus            # API + UI em http://127.0.0.1:8765
@@ -88,11 +111,7 @@ class Argus < Formula
   end
 
   test do
-    ENV["UV_PROJECT_ENVIRONMENT"] = venv_dir
-    output = shell_output(
-      "#{formula_opt_bin("uv")}/uv run --project #{libexec} python3 -c " \
-      "'from src.settings import VERSION; print(VERSION)'",
-    )
-    assert_match version.to_s, output
+    assert_path_exists bin/"argus"
+    assert_path_exists libexec/"src/main.py"
   end
 end
