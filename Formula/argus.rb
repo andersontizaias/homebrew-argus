@@ -26,20 +26,34 @@ class Argus < Formula
   # fórmula pra manter `brew install argus` leve pra quem só usa web. Veja
   # os caveats e `scripts/bootstrap.sh` no pacote instalado.
 
+  # O venv do projeto (uv sync) fica FORA do Cellar, em ~/.argus/venv, de
+  # propósito: pacotes Python compilados (wheels com .so) instalados ali
+  # dentro quebram o passo de "fix install linkage" que o Homebrew roda
+  # depois do `install` em todo keg — o binário não tem padding de header
+  # suficiente pra ser relinkado pro caminho longo do Cellar. Como nada fora
+  # do Cellar entra nesse passo, isolar o venv em ~/.argus/ (mesmo lugar do
+  # banco/artefatos) evita o problema de raiz em vez de tratar o sintoma.
+  def venv_dir
+    "#{Dir.home}/.argus/venv"
+  end
+
   def install
     libexec.install Dir["*"]
-    system formula_opt_bin("uv")/"uv", "sync", "--project", libexec, "--frozen"
-    system formula_opt_bin("uv")/"uv", "run", "--project", libexec, "playwright", "install", "chromium"
 
     %w[argus argus-worker argus-doctor].each do |cmd|
       (bin/cmd).write <<~SH
         #!/usr/bin/env bash
+        export UV_PROJECT_ENVIRONMENT="#{venv_dir}"
         exec "#{formula_opt_bin("uv")}/uv" run --project "#{libexec}" #{cmd} "$@"
       SH
     end
   end
 
   def post_install
+    ENV["UV_PROJECT_ENVIRONMENT"] = venv_dir
+    system formula_opt_bin("uv")/"uv", "sync", "--project", libexec, "--frozen"
+    system formula_opt_bin("uv")/"uv", "run", "--project", libexec, "playwright", "install", "chromium"
+
     env_file = libexec/".env"
     unless env_file.exist?
       cp libexec/".env.example", env_file
@@ -68,11 +82,13 @@ class Argus < Formula
       parte — rode "#{opt_libexec}/scripts/bootstrap.sh" pra checar o que falta
       (ele instrui em vez de baixar SDKs/runtimes sozinho).
 
-      Banco, artefatos e logs ficam em ~/.argus/ — nunca em #{opt_libexec}.
+      Banco, artefatos, logs e o venv Python ficam em ~/.argus/ — nunca em
+      #{opt_libexec}.
     EOS
   end
 
   test do
+    ENV["UV_PROJECT_ENVIRONMENT"] = venv_dir
     output = shell_output(
       "#{formula_opt_bin("uv")}/uv run --project #{libexec} python3 -c " \
       "'from src.settings import VERSION; print(VERSION)'",
