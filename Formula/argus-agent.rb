@@ -1,5 +1,5 @@
 class ArgusAgent < Formula
-  desc "Agente de QA autônomo (web, Android, iOS) com LangGraph, Playwright e Appium"
+  desc "Autonomous QA agent (web, Android, iOS) built with LangGraph"
   homepage "https://github.com/andersontizaias/argus-agent"
   # GitHubPrivateRepositoryReleaseDownloadStrategy foi removida do Homebrew —
   # o substituto suportado é baixar direto do endpoint de asset da API (que
@@ -57,7 +57,7 @@ class ArgusAgent < Formula
       MARKER="${UV_PROJECT_ENVIRONMENT}/.synced-#{version}"
 
       if [[ ! -f "${MARKER}" ]]; then
-        echo "== Argus Agent: preparando dependências (só na primeira vez desta versão) ==" >&2
+        echo "== Argus Agent: setting up dependencies (first run of this version only) ==" >&2
         "${UV}" sync --project "${LIBEXEC}" --frozen
         "${UV}" run --project "${LIBEXEC}" playwright install chromium
 
@@ -93,26 +93,26 @@ class ArgusAgent < Formula
 
   def caveats
     <<~EOS
-      Repositório privado — este tap e os assets de release exigem
-      HOMEBREW_GITHUB_API_TOKEN com acesso de leitura ao repo.
+      Private repository — this tap and its release assets require
+      HOMEBREW_GITHUB_API_TOKEN with read access to the repo.
 
-      A primeira chamada de `argus`/`argus-worker`/`argus-doctor` faz o setup
-      (uv sync + Playwright Chromium — leva alguns minutos e baixa ~200 MB);
-      as próximas são instantâneas.
+      The first call to `argus`/`argus-worker`/`argus-doctor` does the setup
+      (uv sync + Playwright Chromium — takes a few minutes and downloads
+      ~200 MB); later calls are instant.
 
-      Rodar:
-        argus            # API + UI em http://127.0.0.1:8765
-        argus-worker     # processa execuções (em outro terminal)
+      Run it:
+        argus            # API + UI at http://127.0.0.1:8765
+        argus-worker     # processes runs (separate terminal)
 
-      Pra subir sozinho no login via LaunchAgents:
+      To start automatically on login via LaunchAgents:
         ARGUS_INSTALL_DIR="#{opt_libexec}" "#{opt_libexec}/scripts/launchd/install.sh"
 
-      Testes Android/iOS exigem Android Studio/Xcode + Appium configurados à
-      parte — rode "#{opt_libexec}/scripts/bootstrap.sh" pra checar o que falta
-      (ele instrui em vez de baixar SDKs/runtimes sozinho).
+      Android/iOS testing needs Android Studio/Xcode + Appium set up
+      separately — run "#{opt_libexec}/scripts/bootstrap.sh" to check what's
+      missing (it instructs instead of downloading SDKs/runtimes on its own).
 
-      Banco, artefatos, logs e o venv Python ficam em ~/.argus/ — nunca em
-      #{opt_libexec}.
+      Database, artifacts, logs and the Python venv live in ~/.argus/ — never
+      in #{opt_libexec}.
     EOS
   end
 
