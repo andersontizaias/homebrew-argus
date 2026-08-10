@@ -2,21 +2,33 @@
   <img src="img/logo.png" alt="Argus Agent" width="180">
 </p>
 
-# homebrew-argus
+# Argus Agent — Homebrew Tap
 
-Tap Homebrew do [Argus Agent](https://github.com/andersontizaias/argus-agent).
+Official Homebrew tap for [Argus Agent](https://github.com/andersontizaias/argus-agent), an autonomous QA testing agent for web, Android, and iOS apps, powered by LangGraph.
+
+## Installation
 
 ```bash
 brew tap andersontizaias/argus
 brew install andersontizaias/argus/argus-agent
 ```
 
-Use o **nome totalmente qualificado** (`andersontizaias/argus/argus-agent`) — o homebrew-core já tem uma fórmula sem relação nenhuma chamada `argus` (ferramenta de auditoria de rede, `openargus.org`), e a checagem de confiança de tap do Homebrew cai silenciosamente pra ela em vez de dar erro se você usar só `argus`. Qualificado, também já confia na fórmula automaticamente (sem precisar de `brew trust`).
+## Usage
 
-A fórmula só copia os arquivos no `install` — `uv sync` + `playwright install chromium` + `.env` + `alembic upgrade head` rodam na **primeira chamada real** de `argus`/`argus-worker`/`argus-doctor` (venv em `~/.argus/venv`, fora do Cellar), não durante o `brew install`. Isso é proposital: `install`/`post_install` do Homebrew rodam com `$HOME` sandboxado num diretório temporário descartável, e pacotes Python compilados dentro do Cellar quebram o passo de "fix install linkage" do Homebrew. Ver os comentários em `Formula/argus-agent.rb` pros detalhes.
+```bash
+argus            # starts the API + web UI at http://127.0.0.1:8765
+argus-worker     # processes queued test runs (run in a separate terminal)
+argus-doctor     # checks your environment (Playwright, Appium, Android/iOS toolchains)
+```
 
-Pra atualizar a fórmula numa nova versão do argus-agent: mude a tag em `url`/`version` e recalcule o `sha256` do tarball baixado (`argus-agent-vX.Y.Z.tar.gz` na página de releases).
+The first run sets up its dependencies (Python packages and a Chromium browser, ~200 MB) — this takes a few minutes. Subsequent runs start instantly.
 
-## Licença
+To start Argus automatically on login instead of running it manually, `brew info argus-agent` shows the exact command for your install.
+
+Testing Android/iOS apps requires Android Studio/Xcode and Appium set up separately; run `argus-doctor` to check what's missing.
+
+For full documentation — configuration, BDD scripts, providers, and more — see the [main repository](https://github.com/andersontizaias/argus-agent).
+
+## License
 
 [MIT](./LICENSE)
