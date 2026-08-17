@@ -3,9 +3,9 @@ class ArgusAgent < Formula
   homepage "https://github.com/andersontizaias/argus-agent"
   # Repositório público — URL direta de release, sem headers/token. Pra
   # bumpar versão: só troca a tag no url/version e recalcula o sha256.
-  url "https://github.com/andersontizaias/argus-agent/releases/download/v0.1.14/argus-agent-v0.1.14.tar.gz"
-  version "0.1.14"
-  sha256 "67aa8ea0e7692d874e1e7ef5414107cc9d02d240464825273ff24ba92644b7e8"
+  url "https://github.com/andersontizaias/argus-agent/releases/download/v0.1.15/argus-agent-v0.1.15.tar.gz"
+  version "0.1.15"
+  sha256 "f0474b354b23d376dddc86231bf7b6876594bb6fe2e3672d2a0f9676d1b4a4fe"
   license "MIT"
 
   depends_on "uv"
